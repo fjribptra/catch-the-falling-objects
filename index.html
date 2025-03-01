@@ -19,7 +19,7 @@
         }
         #basket {
             position: absolute;
-            bottom: 20px;
+            bottom: 20px; /* Default position for desktop */
             width: 80px;
             height: 50px;
             background-color: #8B4513;
@@ -27,6 +27,12 @@
             left: calc(50% - 40px);
             cursor: pointer;
             z-index: 2;
+        }
+        /* Mobile-specific position */
+        @media screen and (max-width: 768px) {
+            #basket {
+                bottom: 100px; /* Higher position for mobile */
+            }
         }
         .basket-handle {
             position: absolute;
@@ -90,6 +96,7 @@
             font-size: 40px;
             margin-bottom: 20px;
             text-align: center;
+            padding: 0 20px;
         }
         .instructions {
             color: white;
@@ -97,8 +104,9 @@
             margin-bottom: 30px;
             text-align: center;
             max-width: 600px;
+            padding: 0 20px;
         }
-        #game-over {
+        #game-over, #game-won {
             position: absolute;
             top: 0;
             left: 0;
@@ -111,7 +119,13 @@
             align-items: center;
             z-index: 10;
         }
-        #final-score {
+        #game-over {
+            background-color: rgba(139, 0, 0, 0.7); /* Darker red for game over */
+        }
+        #game-won {
+            background-color: rgba(0, 100, 0, 0.7); /* Green for winning */
+        }
+        #final-score, #win-score {
             color: white;
             font-size: 30px;
             margin-bottom: 30px;
@@ -165,9 +179,17 @@
         </div>
         
         <div id="game-over">
-            <h1 class="title">Game Over</h1>
+            <h1 class="title">Game Over!</h1>
+            <p class="instructions">You lost all your lives!</p>
             <p id="final-score">Your score: 0</p>
             <button id="restart-button">Play Again</button>
+        </div>
+        
+        <div id="game-won">
+            <h1 class="title">Time's Up - You Won!</h1>
+            <p class="instructions">Great job! You survived until the end!</p>
+            <p id="win-score">Your score: 0</p>
+            <button id="win-restart-button">Play Again</button>
         </div>
     </div>
 
@@ -181,6 +203,7 @@
             let remainingTime = gameTime;
             let gameInterval;
             let timeInterval;
+            let isMobile = window.innerWidth <= 768;
             
             // DOM elements
             const gameContainer = document.getElementById('game-container');
@@ -188,9 +211,12 @@
             const scoreElement = document.getElementById('score');
             const startScreen = document.getElementById('start-screen');
             const gameOverScreen = document.getElementById('game-over');
+            const gameWonScreen = document.getElementById('game-won');
             const finalScoreElement = document.getElementById('final-score');
+            const winScoreElement = document.getElementById('win-score');
             const startButton = document.getElementById('start-button');
             const restartButton = document.getElementById('restart-button');
+            const winRestartButton = document.getElementById('win-restart-button');
             const livesContainer = document.getElementById('lives-container');
             const timeBar = document.getElementById('time-bar');
             
@@ -222,8 +248,9 @@
                     obj.remove();
                 });
                 
-                // Hide game over screen
+                // Hide end screens
                 gameOverScreen.style.display = 'none';
+                gameWonScreen.style.display = 'none';
                 
                 // Start game
                 gameActive = true;
@@ -252,7 +279,7 @@
                 timeBar.style.width = percentLeft + '%';
                 
                 if (remainingTime <= 0) {
-                    endGame();
+                    endGame(true); // Time's up, player won!
                 }
             }
             
@@ -288,8 +315,11 @@
                     posY += speed;
                     object.style.top = posY + 'px';
                     
-                    // Check if object is caught
-                    if (posY > window.innerHeight - 80 && posY < window.innerHeight - 30) {
+                    // Check if object is caught - different for mobile and desktop
+                    const basketBottom = isMobile ? 100 : 20; // Bottom distance based on device
+                    const basketTop = basketBottom + 50; // 50 is the height of the basket
+                    
+                    if (posY > window.innerHeight - basketTop && posY < window.innerHeight - basketBottom + 30) {
                         const objectRect = object.getBoundingClientRect();
                         const basketRect = basket.getBoundingClientRect();
                         
@@ -309,7 +339,7 @@
                         updateLives();
                         
                         if (lives <= 0) {
-                            endGame();
+                            endGame(false); // Game over, player lost!
                         }
                         
                         object.remove();
@@ -318,14 +348,21 @@
                 }, 16);
             }
             
-            // End game
-            function endGame() {
+            // End game - timeUp parameter determines win vs lose
+            function endGame(timeUp) {
                 gameActive = false;
                 clearInterval(gameInterval);
                 clearInterval(timeInterval);
                 
-                finalScoreElement.textContent = 'Your score: ' + score;
-                gameOverScreen.style.display = 'flex';
+                if (timeUp && lives > 0) {
+                    // Player survived until time ran out - Win!
+                    winScoreElement.textContent = 'Your score: ' + score;
+                    gameWonScreen.style.display = 'flex';
+                } else {
+                    // Player lost all lives - Lose!
+                    finalScoreElement.textContent = 'Your score: ' + score;
+                    gameOverScreen.style.display = 'flex';
+                }
             }
             
             // Handle mouse movement for basket control
@@ -393,6 +430,11 @@
                 }
             }
             
+            // Check for window resize to update mobile status
+            window.addEventListener('resize', function() {
+                isMobile = window.innerWidth <= 768;
+            });
+            
             // Button event listeners
             startButton.addEventListener('click', function() {
                 startScreen.style.display = 'none';
@@ -401,6 +443,11 @@
             });
             
             restartButton.addEventListener('click', function() {
+                init();
+                requestAnimationFrame(updateBasketPosition);
+            });
+            
+            winRestartButton.addEventListener('click', function() {
                 init();
                 requestAnimationFrame(updateBasketPosition);
             });
