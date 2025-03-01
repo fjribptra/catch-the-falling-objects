@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Falling Objects</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #87CEEB;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #basket {
+            position: absolute;
+            bottom: 20px;
+            width: 80px;
+            height: 50px;
+            background-color: #8B4513;
+            border-radius: 0 0 40px 40px;
+            left: calc(50% - 40px);
+            cursor: pointer;
+            z-index: 2;
+        }
+        .basket-handle {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            width: 40px;
+            height: 20px;
+            border: 5px solid #8B4513;
+            border-bottom: none;
+            border-radius: 40px 40px 0 0;
+        }
+        .falling-object {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        .apple {
+            background-color: #ff0000;
+        }
+        .orange {
+            background-color: #ffa500;
+        }
+        .grape {
+            background-color: #800080;
+        }
+        #score-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        #start-button, #restart-button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .title {
+            color: white;
+            font-size: 40px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .instructions {
+            color: white;
+            font-size: 18px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 600px;
+        }
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        #final-score {
+            color: white;
+            font-size: 30px;
+            margin-bottom: 30px;
+        }
+        #lives-container {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            display: flex;
+        }
+        .life {
+            width: 25px;
+            height: 25px;
+            background-color: #ff0000;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        #time-bar-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #time-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #4CAF50;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-container">Score: <span id="score">0</span></div>
+        <div id="lives-container"></div>
+        <div id="time-bar-container">
+            <div id="time-bar"></div>
+        </div>
+        <div id="basket">
+            <div class="basket-handle"></div>
+        </div>
+        
+        <div id="start-screen">
+            <h1 class="title">Catch the Falling Objects</h1>
+            <p class="instructions">Move your basket left and right to catch the falling fruits. Each caught fruit gives you 10 points. Miss 3 fruits and the game is over!</p>
+            <button id="start-button">Start Game</button>
+        </div>
+        
+        <div id="game-over">
+            <h1 class="title">Game Over</h1>
+            <p id="final-score">Your score: 0</p>
+            <button id="restart-button">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game variables
+            let score = 0;
+            let lives = 3;
+            let gameActive = false;
+            let gameTime = 60; // Game time in seconds
+            let remainingTime = gameTime;
+            let gameInterval;
+            let timeInterval;
+            
+            // DOM elements
+            const gameContainer = document.getElementById('game-container');
+            const basket = document.getElementById('basket');
+            const scoreElement = document.getElementById('score');
+            const startScreen = document.getElementById('start-screen');
+            const gameOverScreen = document.getElementById('game-over');
+            const finalScoreElement = document.getElementById('final-score');
+            const startButton = document.getElementById('start-button');
+            const restartButton = document.getElementById('restart-button');
+            const livesContainer = document.getElementById('lives-container');
+            const timeBar = document.getElementById('time-bar');
+            
+            // Basket movement
+            let basketX = window.innerWidth / 2 - 40;
+            let isMovingLeft = false;
+            let isMovingRight = false;
+            
+            // Initialize the game
+            function init() {
+                // Reset game variables
+                score = 0;
+                lives = 3;
+                remainingTime = gameTime;
+                scoreElement.textContent = score;
+                
+                // Show lives
+                updateLives();
+                
+                // Reset time bar
+                timeBar.style.width = '100%';
+                
+                // Set basket position
+                basketX = window.innerWidth / 2 - 40;
+                basket.style.left = basketX + 'px';
+                
+                // Remove all existing falling objects
+                document.querySelectorAll('.falling-object').forEach(obj => {
+                    obj.remove();
+                });
+                
+                // Hide game over screen
+                gameOverScreen.style.display = 'none';
+                
+                // Start game
+                gameActive = true;
+                
+                // Start generating falling objects
+                gameInterval = setInterval(createFallingObject, 1000);
+                
+                // Start timer
+                timeInterval = setInterval(updateTimer, 1000);
+            }
+            
+            // Update lives display
+            function updateLives() {
+                livesContainer.innerHTML = '';
+                for (let i = 0; i < lives; i++) {
+                    const life = document.createElement('div');
+                    life.className = 'life';
+                    livesContainer.appendChild(life);
+                }
+            }
+            
+            // Update timer
+            function updateTimer() {
+                remainingTime--;
+                const percentLeft = (remainingTime / gameTime) * 100;
+                timeBar.style.width = percentLeft + '%';
+                
+                if (remainingTime <= 0) {
+                    endGame();
+                }
+            }
+            
+            // Create a falling object
+            function createFallingObject() {
+                if (!gameActive) return;
+                
+                const object = document.createElement('div');
+                object.className = 'falling-object';
+                
+                // Randomly select object type
+                const types = ['apple', 'orange', 'grape'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                object.classList.add(type);
+                
+                // Set random position
+                const objectX = Math.random() * (window.innerWidth - 30);
+                object.style.left = objectX + 'px';
+                object.style.top = '0px';
+                
+                gameContainer.appendChild(object);
+                
+                // Animate falling
+                let posY = 0;
+                const speed = 3 + Math.random() * 2;
+                
+                const fallInterval = setInterval(function() {
+                    if (!gameActive) {
+                        clearInterval(fallInterval);
+                        return;
+                    }
+                    
+                    posY += speed;
+                    object.style.top = posY + 'px';
+                    
+                    // Check if object is caught
+                    if (posY > window.innerHeight - 80 && posY < window.innerHeight - 30) {
+                        const objectRect = object.getBoundingClientRect();
+                        const basketRect = basket.getBoundingClientRect();
+                        
+                        if (objectRect.left < basketRect.right && 
+                            objectRect.right > basketRect.left) {
+                            // Object caught
+                            score += 10;
+                            scoreElement.textContent = score;
+                            object.remove();
+                            clearInterval(fallInterval);
+                        }
+                    }
+                    
+                    // Check if object is missed
+                    if (posY > window.innerHeight) {
+                        lives--;
+                        updateLives();
+                        
+                        if (lives <= 0) {
+                            endGame();
+                        }
+                        
+                        object.remove();
+                        clearInterval(fallInterval);
+                    }
+                }, 16);
+            }
+            
+            // End game
+            function endGame() {
+                gameActive = false;
+                clearInterval(gameInterval);
+                clearInterval(timeInterval);
+                
+                finalScoreElement.textContent = 'Your score: ' + score;
+                gameOverScreen.style.display = 'flex';
+            }
+            
+            // Handle mouse movement for basket control
+            gameContainer.addEventListener('mousemove', function(e) {
+                if (!gameActive) return;
+                
+                basketX = e.clientX - 40;
+                
+                // Keep basket within bounds
+                if (basketX < 0) basketX = 0;
+                if (basketX > window.innerWidth - 80) basketX = window.innerWidth - 80;
+                
+                basket.style.left = basketX + 'px';
+            });
+            
+            // Handle touch movement for mobile devices
+            gameContainer.addEventListener('touchmove', function(e) {
+                if (!gameActive) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                basketX = touch.clientX - 40;
+                
+                // Keep basket within bounds
+                if (basketX < 0) basketX = 0;
+                if (basketX > window.innerWidth - 80) basketX = window.innerWidth - 80;
+                
+                basket.style.left = basketX + 'px';
+            }, { passive: false });
+            
+            // Handle keyboard controls
+            document.addEventListener('keydown', function(e) {
+                if (!gameActive) return;
+                
+                if (e.key === 'ArrowLeft') {
+                    isMovingLeft = true;
+                }
+                if (e.key === 'ArrowRight') {
+                    isMovingRight = true;
+                }
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                if (e.key === 'ArrowLeft') {
+                    isMovingLeft = false;
+                }
+                if (e.key === 'ArrowRight') {
+                    isMovingRight = false;
+                }
+            });
+            
+            // Update basket position based on keyboard input
+            function updateBasketPosition() {
+                if (isMovingLeft) basketX -= 8;
+                if (isMovingRight) basketX += 8;
+                
+                // Keep basket within bounds
+                if (basketX < 0) basketX = 0;
+                if (basketX > window.innerWidth - 80) basketX = window.innerWidth - 80;
+                
+                basket.style.left = basketX + 'px';
+                
+                if (gameActive) {
+                    requestAnimationFrame(updateBasketPosition);
+                }
+            }
+            
+            // Button event listeners
+            startButton.addEventListener('click', function() {
+                startScreen.style.display = 'none';
+                init();
+                requestAnimationFrame(updateBasketPosition);
+            });
+            
+            restartButton.addEventListener('click', function() {
+                init();
+                requestAnimationFrame(updateBasketPosition);
+            });
+        });
+    </script>
+</body>
+</html>
