@@ -116,7 +116,7 @@
             max-width: 600px;
             padding: 0 20px;
         }
-        #quit-button {
+        .quit-button {
             padding: 15px 30px;
             font-size: 20px;
             background-color: #ff0000;
@@ -203,7 +203,7 @@
             <p class="instructions">You lost all your lives!</p>
             <p id="final-score">Your score: 0</p>
             <button id="restart-button">Play Again</button>
-            <button id="quit-button">Quit Game</button>
+            <button class="quit-button">Quit Game</button>
         </div>
         
         <div id="game-won">
@@ -211,7 +211,7 @@
             <p class="instructions">Great job! You survived until the end!</p>
             <p id="win-score">Your score: 0</p>
             <button id="win-restart-button">Play Again</button>
-            <button id="quit-button">Quit Game</button>
+            <button class="quit-button">Quit Game</button>
         </div>
     </div>
 
@@ -241,7 +241,7 @@
             const winRestartButton = document.getElementById('win-restart-button');
             const livesContainer = document.getElementById('lives-container');
             const timeBar = document.getElementById('time-bar');
-            const quitButton = document.getElementById('quit-button');
+            const quitButtons = document.querySelectorAll('.quit-button');
             
             // Basket movement
             let basketX = window.innerWidth / 2 - 40;
@@ -475,9 +475,11 @@
                 requestAnimationFrame(updateBasketPosition);
             });
 
-            quitButton.addEventListener('click', function() {
-                window.location.href = "https://openplay-games.vercel.app"
-            });
+            quitButtons.forEach((quitButton) => {
+                quitButton.addEventListener('click', function() {
+                    window.location.href = 'https://openplay-games.vercel.app'
+                })
+            })
         });
     </script>
 </body>
